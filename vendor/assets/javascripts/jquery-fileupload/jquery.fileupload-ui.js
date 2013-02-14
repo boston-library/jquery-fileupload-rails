@@ -140,6 +140,7 @@
             },
             // Callback for successful uploads:
             done: function (e, data) {
+
                 var that = $(this).data('blueimp-fileupload') ||
                         $(this).data('fileupload'),
                     files = that._getFilesFromResponse(data),
@@ -147,9 +148,12 @@
                     deferred;
                 if (data.context) {
                     data.context.each(function (index) {
-                        var file = files[index] ||
+                        var file = ($.isArray(data.result) &&
+                            data.result[index]) ||
+                        {error: 'Empty file upload result'};
+                        /*var file = files[index] ||
                                 {error: 'Empty file upload result'},
-                            deferred = that._addFinishedDeferreds();
+                            deferred = that._addFinishedDeferreds(); */
                         if (file.error) {
                             that._adjustMaxNumberOfFiles(1);
                         }

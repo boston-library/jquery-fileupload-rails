@@ -2,17 +2,13 @@
 
 [jQuery-File-Plugin](https://github.com/blueimp/jQuery-File-Upload) is a file upload plugin written by [Sebastian Tschan](https://github.com/blueimp). jQuery File Upload features multiple file selection, drag&drop support, progress bars and preview images for jQuery. Supports cross-domain, chunked and resumable file uploads and client-side image resizing.
 
-jquery-fileupload-rails is a library that integrates jQuery File Upload for Rails 3.1 Asset Pipeline (Rails 3.2 supported).
+jquery-fileupload-rails is a library that integrates jQuery File Upload for Rails and is based on a version released at: https://github.com/boston-library/jquery-fileupload-rails.
 
-## Plugin versions
-
-* jQuery File Upload User Interface Plugin 6.11
-* jQuery File Upload Plugin 5.19.3
-* jQuery UI Widget 1.9.1+amd
+This version of the plugin has support for clientside checksums.
 
 ## Installing Gem
 
-    gem "jquery-fileupload-rails"
+    gem 'jquery-fileupload-rails', :git => 'https://github.com/boston-library/jquery-fileupload-rails.git'
 
 ## Using the javascripts
 
@@ -54,18 +50,18 @@ The `jquery.iframe-transport` fallback transport has some special caveats regard
 
     Rails.application.config.middleware.use JQuery::FileUpload::Rails::Middleware
 
-## [Example app](https://github.com/tors/jquery-fileupload-rails-paperclip-example)
+## [Example app](https://github.com/boston-library/jquery-fileupload-rails-paperclip-example)
 This app uses paperclip and twitter-bootstrap-rails
-
-You can also check out Ryan Bate's RailsCast [jQuery File Upload episode](http://railscasts.com/episodes/381-jquery-file-upload). You will
-need a pro account to watch it though.
-
 
 ## Thanks
 Thanks to [Sebastian Tschan](https://github.com/blueimp) for writing an awesome file upload plugin.
 
+Thanks to [Tors Dalid](https://github.com/tors)for the base version of this plugin
+
+Thanks to [Ben Ranker](https://github.com/branker) for making the md5 calculations streamable.
+
 ## License
-Copyright (c) 2012 Tors Dalid
+Copyright (c) 2013 Boston Public Library
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.

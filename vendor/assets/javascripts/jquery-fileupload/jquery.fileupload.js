@@ -127,6 +127,8 @@
             progressInterval: 100,
             // Interval in milliseconds to calculate progress bitrate:
             bitrateInterval: 500,
+            // determines whether to calculate a MD5 sum for the upload
+            calculateMD5Sum: false,
 
             // Additional form data to be sent along with the file uploads can be set
             // using this option, which accepts an array of objects with name and
@@ -222,6 +224,8 @@
             'multipart',
             'forceIframeTransport'
         ],
+
+        _md5Streamer: new MD5(),
 
         _BitrateTimer: function () {
             this.timestamp = +(new Date());
@@ -334,6 +338,85 @@
             }
         },
 
+        /* Incrementally calculate a file checksum without eliminating browser
+         * responsiveness.
+         *   :param: file = the file (an html5 file object)
+         *   :param: indicator = a dom element to update with progress
+         *   :param: start = the file offset to start checksumming at
+         *   :param: md5 = a streaming md5 calculator object
+         *   :param: next_step = a function to call after md5 calculation
+         * This method grabs a slice from the file starting at `start` and asks
+         * the browser to load that slice. When the slice is loaded, this function
+         * will update `indicator` and push the chunk's data into `md5`. If
+         * there's more file to process, it'll recurse to handle the next slice.
+         * Once all slices have been processed, it'll attach the checksum to the
+         * file object and call `next_step`.
+         */
+        _calculate_checksum: function (file, indicator, start, md5, next_step) {
+            var that = this;
+            var size = 1024 * 1024; // 1MB chunks seem to work well, but might still want tweaking
+            //var size = 1024 * 10;
+
+            // Due to changes in the HTML5 Blob/File spec for slice, Mozilla
+            // and Webkit now have name-spaced slice functions that implement
+            // the new version of the spec.  Use those first, if available.
+            if (typeof window.Blob.prototype.webkitSlice == 'function') {
+                // Google Chrome -  http://trac.webkit.org/changeset/83873
+                var slice = file.webkitSlice(start, start + size);
+            } else if (typeof window.Blob.prototype.mozSlice == 'function') {
+                // Mozilla Firefox -  https://developer.mozilla.org/en/DOM/Blob
+                var slice = file.mozSlice(start, start + size);
+            } else {
+                // Using the old-spec slice function for now:
+                //   http://www.w3.org/TR/2009/WD-FileAPI-20091117/#dfn-Blob
+                // Updated spec for Blob.slice (as implemented in mozSlice and webkitSlice):
+                //   http://www.w3.org/TR/2010/WD-FileAPI-20101026/#dfn-Blob
+                var slice = file.slice(start, size);
+            }
+
+            // make a reader for handling the current slice.
+            var reader = new FileReader();
+            reader.onloadend = function (evt){
+                // after loading the slice update the ui
+                // TODO: ideally ui updates should use a real js event framework and
+                // live outside this function
+                /*file.status.html('calculating checksum');
+                var percentage = Math.round((start * 100) / file.size);
+                indicator.width(percentage);
+                indicator.html(percentage + '%');
+                file.status.append(file.progress);*/
+
+
+                var percentage = Math.round((start * 100) / file.size);
+                $("#" + file.size).html('Checksum: ' + percentage + '%');
+                $("#" + file.size).width(percentage);
+
+                // then ship the data to the md5 calculator
+                md5.process_bytes(evt.target.result);
+
+                if (start + size < file.size) {
+                    // if there are more chunks then kick off the next chunk.
+                    var process_next_slice = function () {
+                        that._calculate_checksum(file, indicator, start+size,
+                            md5, next_step);
+                    };
+                    setTimeout(process_next_slice, 0);
+                } else {
+                    // if we're done with the file then record the md5sum
+                    md5.finish();
+                    file.md5 = md5.asString();
+                    console.log(file.name + ' checksum ' + file.md5);
+                    $("#" + file.size).width(0);
+                    $("#" + file.size).html('');
+                    $("#" + file.size).remove();
+                    // and go where the original caller asked us to
+                    next_step();
+                }
+            };
+            // kick off the read that we just configured
+            reader.readAsBinaryString(slice);
+        },
+
         _initXHRData: function (options) {
             var formData,
                 file = options.files[0],
@@ -344,6 +427,7 @@
             if (options.contentRange) {
                 options.headers['Content-Range'] = options.contentRange;
             }
+
             if (!multipart) {
                 options.headers['Content-Disposition'] = 'attachment; filename="' +
                     encodeURI(file.name) + '"';
@@ -628,6 +712,7 @@
             promise.abort = function () {
                 return jqXHR.abort();
             };
+            //this._md5Streamer = new MD5();
             upload();
             return promise;
         },
@@ -700,6 +785,7 @@
                 aborted,
                 slot,
                 pipe,
+                //STEVEN
                 options = that._getAJAXSettings(data),
                 send = function () {
                     that._sending += 1;
@@ -769,7 +855,32 @@
                 };
                 return this._enhancePromise(pipe);
             }
-            return send();
+
+            /* EDITED SECTION */
+            if(options.calculateMD5Sum) {
+                    var that = this;
+                    var file = options.files[0];
+                    var indicator = '';
+                    var md5 = new MD5();
+                    // create a streaming md5 calculator for this file
+                    this._md5Streamer = new MD5();
+
+                    var next_step = function() {
+                        options.md5 = options.files[0].md5;
+                        options.headers['Content-MD5'] = options.md5;
+                        return send();
+                    };
+                    var kickoff_checksum = function() {
+                        that._calculate_checksum(file, indicator, 0, md5, next_step);
+                    };
+                    // kick off the checksum process in the background.
+                    setTimeout(kickoff_checksum, 0);
+            }
+            else {
+                return send();
+            }
+            /* END EDITED SECTION */
+
         },
 
         _onAdd: function (e, data) {
@@ -1138,7 +1249,6 @@
                             if (aborted) {
                                 return;
                             }
-                            data.files = files;
                             jqXHR = that._onSend(null, data).then(
                                 function (result, textStatus, jqXHR) {
                                     dfd.resolve(result, textStatus, jqXHR);

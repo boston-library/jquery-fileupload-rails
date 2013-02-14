@@ -1,3 +1,4 @@
+//=require md5/md5
 //=require jquery-fileupload/vendor/jquery.ui.widget
 //=require jquery-fileupload/vendor/load-image
 //=require jquery-fileupload/vendor/canvas-to-blob

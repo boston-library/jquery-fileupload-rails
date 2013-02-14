@@ -54,6 +54,7 @@
                             s.url = s.url + addParamChar + '_method=PATCH';
                             s.type = 'POST';
                         }
+                        alert('transported here');
                         xdr.open(s.type, s.url);
                         xdr.onload = function () {
                             callback(
